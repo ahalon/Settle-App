@@ -19,6 +19,11 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """Schemat rejestracji: wymaga hasła z minimalną długością."""
+    phone_number: str = Field(
+        ...,
+        pattern=r"^\d{9}$",
+        description="Numer telefonu – do BLIKa (dokładnie 9 cyfr)"
+    )
     password: str = Field(..., min_length=8, max_length=128, description="Hasło użytkownika")
 
 
@@ -32,8 +37,8 @@ class RegisterPayload(BaseModel):
     name: str
     email: EmailStr
     password: str
-    phone_number: Optional[str] = Field(
-        None,
+    phone_number: str = Field(
+        ...,
         pattern=r"^\d{9}$",
         description="Numer telefonu – do BLIKa (dokładnie 9 cyfr)"
     )

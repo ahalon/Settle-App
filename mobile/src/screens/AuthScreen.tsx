@@ -38,12 +38,12 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
     const trimmedEmail = email.trim();
     const cleanPhone = phone.replace(/\D/g, '');
 
-    if (!trimmedEmail || !password || (!isLoginMode && !trimmedName)) {
+    if (!trimmedEmail || !password || (!isLoginMode && (!trimmedName || !cleanPhone))) {
       Alert.alert('Błąd', 'Uzupełnij wszystkie wymagane pola');
       return;
     }
 
-    if (!isLoginMode && cleanPhone.length > 0 && cleanPhone.length !== 9) {
+    if (!isLoginMode && cleanPhone.length !== 9) {
       Alert.alert('Błąd', 'Numer telefonu musi składać się z dokładnie 9 cyfr');
       return;
     }
@@ -69,7 +69,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
           name: trimmedName,
           email: trimmedEmail,
           password,
-          phone_number: cleanPhone || null,
+          phone_number: cleanPhone,
         });
 
         Alert.alert(
@@ -127,7 +127,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
                   />
                   <TextInput
                     style={styles.input}
-                    placeholder="Numer telefonu (9 cyfr, opcjonalnie)"
+                    placeholder="Numer telefonu (9 cyfr)"
                     placeholderTextColor="#64748b"
                     keyboardType="number-pad"
                     maxLength={9}

@@ -106,7 +106,7 @@ def register(
     user = User(
         name=payload.name,
         email=payload.email,
-        phone_number=payload.phone_number.strip() if payload.phone_number else None,
+        phone_number=payload.phone_number.strip(),
         hashed_password=get_password_hash(payload.password),
         is_verified=False,
     )
