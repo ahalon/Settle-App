@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { getToken, getUserData, removeToken } from './authStorage';
 import AuthScreen from './src/screens/AuthScreen';
@@ -9,7 +10,7 @@ import { setOnUnauthorizedHandler, updatePushToken } from './src/services/api';
 import { CurrentUser, Group } from './src/types';
 import { registerForPushNotificationsAsync } from './src/utils/notifications';
 
-export default function App() {
+function MainApp() {
   const [token, setToken] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
@@ -99,6 +100,15 @@ export default function App() {
   );
 }
 
+export default function App() {
+  return (
+    <SafeAreaProvider initialMetrics={initialWindowMetrics} style={styles.container}>
+      <MainApp />
+    </SafeAreaProvider>
+  );
+}
+
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0f172a' },
   loading: { flex: 1, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center' },
 });
