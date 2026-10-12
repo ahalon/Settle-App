@@ -18,9 +18,9 @@
 
 ## 📌 Overview
 
-**SettleUp** is an end-to-end expense management application inspired by Splitwise and Tricount. It addresses the common pain points of group trip expenses, shared apartment bills, and event finances by eliminating fractional currency errors, minimizing cross-person bank transfers, and automating the settlement cycle through push notifications and transactional emails.
+**SettleApp** is an end-to-end expense management application inspired by Splitwise and Tricount. It addresses the common pain points of group trip expenses, shared apartment bills, and event finances by eliminating fractional currency errors, minimizing cross-person bank transfers, and automating the settlement cycle through push notifications and transactional emails.
 
-Unlike standard tutorial CRUD apps, **SettleUp** implements:
+Unlike standard tutorial CRUD apps, **SettleApp** implements:
 - A **greedy debt simplification algorithm** ($O(N \log N)$) that minimizes the total number of bank transfers needed to clear all group debts.
 - A **double-sided settlement verification state machine** (`pending` $\rightarrow$ `confirmed` / `rejected`), preventing unverified or fraudulent debt clearances.
 - An **integer-based financial engine** (calculating all shares in exact integer cents/grosze with remainder redistribution).
@@ -169,7 +169,7 @@ erDiagram
 
 When multiple members in a group pay for different expenses, calculating who owes whom can easily lead to a chaotic, cycle-filled graph.
 
-SettleUp resolves this using an efficient **greedy two-pointer settlement algorithm**:
+SettleApp resolves this using an efficient **greedy two-pointer settlement algorithm**:
 
 $$\sum \text{net\_balances} = 0$$
 

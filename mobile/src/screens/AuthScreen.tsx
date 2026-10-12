@@ -107,7 +107,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.headerBox}>
-              <Text style={styles.title}>SettleUp</Text>
+              <Text style={styles.title}>SettleApp</Text>
               <Text style={styles.subtitle}>
                 {isLoginMode ? 'Zaloguj się do swojego konta' : 'Załóż nowe konto'}
               </Text>

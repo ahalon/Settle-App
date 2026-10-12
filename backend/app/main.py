@@ -22,7 +22,7 @@ def run_monthly_notifications() -> None:
     finally:
         db.close()
 
-app = FastAPI(title="SettleUp API")
+app = FastAPI(title="SettleApp API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,4 +55,4 @@ def stop_scheduler() -> None:
 
 @app.get("/")
 def root():
-    return {"message": "SettleUp API działa"}
+    return {"message": "SettleApp API działa"}

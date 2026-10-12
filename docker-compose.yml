@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: settleup-backend
+    container_name: settleapp-backend
     ports:
       - "8000:8000"
     volumes:

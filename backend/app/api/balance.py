@@ -198,7 +198,7 @@ def trigger_monthly_settlement(
     Endpoint wywoływany 1. dnia miesiąca przez crona.
     Wymaga nagłówka X-Cron-Key zgodnego z CRON_SECRET w ustawieniach.
     """
-    expected_secret = getattr(settings, "CRON_SECRET", "settleup-secret-cron-key")
+    expected_secret = getattr(settings, "CRON_SECRET", "settleapp-secret-cron-key")
     if x_cron_key != expected_secret:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -27,7 +27,7 @@ jobs:
 
       - name: Run Pytest
         env:
-          SECRET_KEY: "settleup_super_tajny_klucz_do_testow_ci_github"
+          SECRET_KEY: "settleapp_super_tajny_klucz_do_testow_ci_github"
           BACKEND_URL: "http://127.0.0.1:8000"
         run: |
           cd backend

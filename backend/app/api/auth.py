@@ -76,7 +76,7 @@ def render_verification_html(title: str, message: str, is_success: bool = True) 
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{title} - SettleUp</title>
+        <title>{title} - SettleApp</title>
       </head>
       <body style="margin: 0; background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh;">
         <div style="background-color: #1e293b; padding: 40px; border-radius: 16px; border: 1px solid #334155; text-align: center; max-width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); margin: 20px;">
@@ -162,7 +162,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
         status_code=200,
         content=render_verification_html(
             "Konto aktywowane!",
-            "Twój adres e-mail został pomyślnie zweryfikowany. Możesz teraz wrócić do aplikacji SettleUp i się zalogować.",
+            "Twój adres e-mail został pomyślnie zweryfikowany. Możesz teraz wrócić do aplikacji SettleApp i się zalogować.",
             is_success=True,
         ),
     )
