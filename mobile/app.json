@@ -13,10 +13,8 @@
     "android": {
       "package": "com.settleup.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#000000",
+        "foregroundImage": "./assets/settle_app_logo.png"
       },
       "predictiveBackGestureEnabled": false
     },
