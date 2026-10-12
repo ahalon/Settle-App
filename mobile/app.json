@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "SettleApp",
-    "slug": "settle-app",
+    "slug": "settleup",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/settle_app_logo.png",
