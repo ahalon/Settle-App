@@ -19,7 +19,11 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/settle_app_logo.png",
+      "bundler": "metro"
+    },
+    "experiments": {
+      "baseUrl": "/Settle-App"
     },
     "plugins": [
       "expo-secure-store"

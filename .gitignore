@@ -225,3 +225,6 @@ __marimo__/
 #AI agentic
 .clineignore
 .rooignore
+
+# Android builds
+*.apk
