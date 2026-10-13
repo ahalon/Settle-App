@@ -1,8 +1,9 @@
 import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 
 import { Transfer } from '../types';
+import { showAlert } from '../utils/alert';
 
 interface TransferItemProps {
   transfer: Transfer;
@@ -30,7 +31,7 @@ export default function TransferItem({
   const handleCopyPhone = async () => {
     if (!receiverPhone) return;
     await Clipboard.setStringAsync(receiverPhone);
-    Alert.alert('Skopiowano', `Numer ${receiverPhone} został skopiowany do schowka.`);
+    showAlert('Skopiowano', `Numer ${receiverPhone} został skopiowany do schowka.`);
   };
 
   const itemStyle = pending
@@ -55,7 +56,7 @@ export default function TransferItem({
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() =>
-              Alert.alert('Usuń deklarację', 'Czy na pewno chcesz usunąć tę deklarację przelewu?', [
+              showAlert('Usuń deklarację', 'Czy na pewno chcesz usunąć tę deklarację przelewu?', [
                 { text: 'Anuluj', style: 'cancel' },
                 { text: 'Usuń', style: 'destructive', onPress: onDelete },
               ])

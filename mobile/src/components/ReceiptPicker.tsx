@@ -1,6 +1,8 @@
 import React from 'react';
-import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+
+import { showAlert } from '../utils/alert';
 
 interface ReceiptPickerProps {
   imageUri: string | null;
@@ -11,7 +13,7 @@ export default function ReceiptPicker({ imageUri, onChange }: ReceiptPickerProps
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Brak uprawnień', 'Potrzebujemy dostępu do galerii, aby dodać paragon.');
+      showAlert('Brak uprawnień', 'Potrzebujemy dostępu do galerii, aby dodać paragon.');
       return;
     }
 

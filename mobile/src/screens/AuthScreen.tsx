@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -18,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { saveToken, saveUserData } from '../../authStorage';
 import { login, register } from '../services/api';
 import { CurrentUser } from '../types';
+import { showAlert } from '../utils/alert';
 import { getErrorMessage } from '../utils/errorHandler';
 
 interface AuthScreenProps {
@@ -31,20 +31,29 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{
+    type: 'error' | 'success';
+    text: string;
+  } | null>(null);
 
   const handleSubmit = async () => {
     Keyboard.dismiss();
+    setStatusMessage(null);
     const trimmedName = name.trim();
     const trimmedEmail = email.trim();
     const cleanPhone = phone.replace(/\D/g, '');
 
     if (!trimmedEmail || !password || (!isLoginMode && (!trimmedName || !cleanPhone))) {
-      Alert.alert('Błąd', 'Uzupełnij wszystkie wymagane pola');
+      const msg = 'Uzupełnij wszystkie wymagane pola';
+      setStatusMessage({ type: 'error', text: msg });
+      showAlert('Błąd', msg);
       return;
     }
 
     if (!isLoginMode && cleanPhone.length !== 9) {
-      Alert.alert('Błąd', 'Numer telefonu musi składać się z dokładnie 9 cyfr');
+      const msg = 'Numer telefonu musi składać się z dokładnie 9 cyfr';
+      setStatusMessage({ type: 'error', text: msg });
+      showAlert('Błąd', msg);
       return;
     }
 
@@ -72,22 +81,24 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
           phone_number: cleanPhone,
         });
 
-        Alert.alert(
-          'Konto utworzone!',
-          'Wysłaliśmy link weryfikacyjny na Twój adres e-mail. Sprawdź skrzynkę (oraz folder SPAM), kliknij link, a następnie zaloguj się.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                setPassword('');
-                setIsLoginMode(true);
-              },
+        const successText =
+          'Wysłaliśmy link weryfikacyjny na Twój adres e-mail. Sprawdź skrzynkę (oraz folder SPAM), kliknij link, a następnie zaloguj się.';
+        setStatusMessage({ type: 'success', text: successText });
+
+        showAlert('Konto utworzone!', successText, [
+          {
+            text: 'OK',
+            onPress: () => {
+              setPassword('');
+              setIsLoginMode(true);
             },
-          ]
-        );
+          },
+        ]);
       }
     } catch (err: any) {
-      Alert.alert('Błąd', getErrorMessage(err, 'Wystąpił błąd autoryzacji'));
+      const errMsg = getErrorMessage(err, 'Wystąpił błąd autoryzacji');
+      setStatusMessage({ type: 'error', text: errMsg });
+      showAlert('Błąd', errMsg);
     } finally {
       setLoading(false);
     }
@@ -157,7 +168,31 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
           pointerEvents="auto"
         />
 
-        <TouchableOpacity style={styles.mainButton} onPress={handleSubmit} disabled={loading}>
+        {statusMessage && (
+          <View
+            style={[
+              styles.statusBox,
+              statusMessage.type === 'error' ? styles.statusBoxError : styles.statusBoxSuccess,
+            ]}
+          >
+            <Text
+              style={[
+                styles.statusText,
+                statusMessage.type === 'error' ? styles.statusTextError : styles.statusTextSuccess,
+              ]}
+            >
+              {statusMessage.text}
+            </Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={styles.mainButton}
+          onPress={handleSubmit}
+          disabled={loading}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+        >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -171,6 +206,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
           style={styles.switchButton}
           onPress={() => {
             Keyboard.dismiss();
+            setStatusMessage(null);
             setIsLoginMode((value) => !value);
           }}
         >
@@ -239,4 +275,29 @@ const styles = StyleSheet.create({
   mainButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   switchButton: { marginTop: 16, alignItems: 'center' },
   switchButtonText: { color: '#38bdf8', fontSize: 13 },
+  statusBox: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 14,
+    borderWidth: 1,
+  },
+  statusBoxError: {
+    backgroundColor: '#451a1a',
+    borderColor: '#b91c1c',
+  },
+  statusBoxSuccess: {
+    backgroundColor: '#064e3b',
+    borderColor: '#059669',
+  },
+  statusText: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  statusTextError: {
+    color: '#fca5a5',
+  },
+  statusTextSuccess: {
+    color: '#6ee7b7',
+  },
 });

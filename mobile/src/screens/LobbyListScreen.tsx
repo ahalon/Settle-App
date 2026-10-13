@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Keyboard,
   RefreshControl,
   ScrollView,
@@ -16,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { removeToken } from '../../authStorage';
 import { createGroup, getGroupBalance, getGroups, joinGroup } from '../services/api';
 import { CurrentUser, DashboardAction, Group } from '../types';
+import { showAlert } from '../utils/alert';
 import { getErrorMessage } from '../utils/errorHandler';
 
 interface LobbyListScreenProps {
@@ -46,7 +46,7 @@ export default function LobbyListScreen({ token, currentUser, onSelectGroup, onL
       }));
       setGroups(groupsWithBalances);
     } catch (err: any) {
-      Alert.alert('Błąd', getErrorMessage(err, 'Nie udało się pobrać grup'));
+      showAlert('Błąd', getErrorMessage(err, 'Nie udało się pobrać grup'));
     }
   };
 
@@ -72,7 +72,7 @@ export default function LobbyListScreen({ token, currentUser, onSelectGroup, onL
       await loadGroups();
       onSelectGroup(response.data);
     } catch (err: any) {
-      Alert.alert('Błąd', getErrorMessage(err, 'Nie udało się stworzyć grupy'));
+      showAlert('Błąd', getErrorMessage(err, 'Nie udało się stworzyć grupy'));
     } finally { setLoading(false); }
   };
 
@@ -87,7 +87,7 @@ export default function LobbyListScreen({ token, currentUser, onSelectGroup, onL
       await loadGroups();
       onSelectGroup(response.data);
     } catch (err: any) {
-      Alert.alert('Błąd', getErrorMessage(err, 'Nieprawidłowy kod'));
+      showAlert('Błąd', getErrorMessage(err, 'Nieprawidłowy kod'));
     } finally { setLoading(false); }
   };
 

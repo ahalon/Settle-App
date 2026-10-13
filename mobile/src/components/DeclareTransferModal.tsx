@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -16,6 +15,7 @@ import {
 import * as Clipboard from 'expo-clipboard';
 
 import { CurrentUser, Group } from '../types';
+import { showAlert } from '../utils/alert';
 
 interface DeclareTransferModalProps {
   visible: boolean;
@@ -52,7 +52,7 @@ export default function DeclareTransferModal({
 
   const handleCopyBLIK = async (phone: string) => {
     await Clipboard.setStringAsync(phone);
-    Alert.alert('Skopiowano', `Numer BLIK: ${phone} w schowku.`);
+    showAlert('Skopiowano', `Numer BLIK: ${phone} w schowku.`);
   };
 
   const handleClose = () => {

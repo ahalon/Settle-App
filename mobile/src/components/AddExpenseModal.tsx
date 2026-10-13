@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -15,6 +14,7 @@ import {
 } from 'react-native';
 
 import { CurrentUser, Group } from '../types';
+import { showAlert } from '../utils/alert';
 import ReceiptPicker from './ReceiptPicker';
 
 interface AddExpenseModalProps {
@@ -62,12 +62,12 @@ export default function AddExpenseModal({
 
   const handleSubmit = async () => {
     if (!title.trim() || !amount.trim() || !selectedPayerId) {
-      Alert.alert('Błąd', 'Wypełnij wszystkie pola wydatku');
+      showAlert('Błąd', 'Wypełnij wszystkie pola wydatku');
       return;
     }
     const amountInCents = Math.round(parseFloat(amount.replace(',', '.')) * 100);
     if (!Number.isFinite(amountInCents) || amountInCents <= 0) {
-      Alert.alert('Błąd', 'Wpisz poprawną kwotę');
+      showAlert('Błąd', 'Wpisz poprawną kwotę');
       return;
     }
 

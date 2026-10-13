@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Keyboard,
   RefreshControl,
@@ -35,6 +34,7 @@ import {
   SettlementSuggestion,
   Transfer,
 } from '../types';
+import { showAlert } from '../utils/alert';
 import { getErrorMessage } from '../utils/errorHandler';
 import AddExpenseModal from '../components/AddExpenseModal';
 import DeclareTransferModal from '../components/DeclareTransferModal';
@@ -109,7 +109,7 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
         setTransferRecipientId((current) => current || creditor?.id || null);
       }
     } catch (err: any) {
-      Alert.alert('Błąd', getErrorMessage(err, 'Nie udało się pobrać danych grupy'));
+      showAlert('Błąd', getErrorMessage(err, 'Nie udało się pobrać danych grupy'));
     }
   };
 
@@ -128,7 +128,7 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
 
   const handleCopyCode = async () => {
     await Clipboard.setStringAsync(group.join_code);
-    Alert.alert('Skopiowano', `Kod "${group.join_code}" został skopiowany do schowka.`);
+    showAlert('Skopiowano', `Kod "${group.join_code}" został skopiowany do schowka.`);
   };
 
   const handleSelectSuggestedSettlement = (settlement: SettlementSuggestion) => {
@@ -161,14 +161,14 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
       Keyboard.dismiss();
       await loadDetails();
     } catch (err: any) {
-      Alert.alert('Błąd', getErrorMessage(err, 'Nie udało się zapisać wydatku'));
+      showAlert('Błąd', getErrorMessage(err, 'Nie udało się zapisać wydatku'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteExpense = (expenseId: number) => {
-    Alert.alert('Usuń wydatek', 'Czy na pewno chcesz usunąć ten wydatek?', [
+    showAlert('Usuń wydatek', 'Czy na pewno chcesz usunąć ten wydatek?', [
       { text: 'Anuluj', style: 'cancel' },
       {
         text: 'Usuń',
@@ -179,7 +179,7 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
             await deleteExpense(token, expenseId);
             await loadDetails();
           } catch (err: any) {
-            Alert.alert('Błąd', getErrorMessage(err, 'Nie udało się usunąć wydatku'));
+            showAlert('Błąd', getErrorMessage(err, 'Nie udało się usunąć wydatku'));
           } finally {
             setLoading(false);
           }
@@ -190,12 +190,12 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
 
   const handleDeclareTransferSubmit = async () => {
     if (!transferRecipientId || !transferAmount.trim()) {
-      Alert.alert('Błąd', 'Wybierz odbiorcę i wpisz kwotę przelewu');
+      showAlert('Błąd', 'Wybierz odbiorcę i wpisz kwotę przelewu');
       return;
     }
     const cents = Math.round(parseFloat(transferAmount.replace(',', '.')) * 100);
     if (!Number.isFinite(cents) || cents <= 0) {
-      Alert.alert('Błąd', 'Wpisz poprawną kwotę przelewu');
+      showAlert('Błąd', 'Wpisz poprawną kwotę przelewu');
       return;
     }
     setLoading(true);
@@ -206,7 +206,7 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
       Keyboard.dismiss();
       await loadDetails();
     } catch (err: any) {
-      Alert.alert('Błąd', getErrorMessage(err, 'Nie udało się zadeklarować przelewu'));
+      showAlert('Błąd', getErrorMessage(err, 'Nie udało się zadeklarować przelewu'));
     } finally {
       setLoading(false);
     }
@@ -218,14 +218,14 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
       await decideTransfer(token, transferId, decision);
       await loadDetails();
     } catch (err: any) {
-      Alert.alert('Błąd', getErrorMessage(err, 'Nie udało się zmienić statusu przelewu'));
+      showAlert('Błąd', getErrorMessage(err, 'Nie udało się zmienić statusu przelewu'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteTransfer = (transferId: number) => {
-    Alert.alert('Usuń deklarację', 'Czy na pewno chcesz usunąć tę deklarację przelewu?', [
+    showAlert('Usuń deklarację', 'Czy na pewno chcesz usunąć tę deklarację przelewu?', [
       { text: 'Anuluj', style: 'cancel' },
       {
         text: 'Usuń',
@@ -236,7 +236,7 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
             await deleteTransfer(token, transferId);
             await loadDetails();
           } catch (err: any) {
-            Alert.alert('Błąd', getErrorMessage(err, 'Nie udało się usunąć deklaracji'));
+            showAlert('Błąd', getErrorMessage(err, 'Nie udało się usunąć deklaracji'));
           } finally {
             setLoading(false);
           }
