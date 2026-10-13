@@ -81,6 +81,11 @@ export interface Transfer {
   amount: number;
   status: TransferStatus;
   created_at: string;
+  sender_name?: string | null;
+  receiver_name?: string | null;
+  from_user_name?: string | null;
+  to_user_name?: string | null;
+  receiver_phone?: string | null;
 }
 
 export interface RegisterPayload {

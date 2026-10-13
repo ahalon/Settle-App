@@ -124,6 +124,11 @@ class TransferOut(BaseModel):
     amount: int
     status: Literal["pending", "confirmed", "rejected"]
     created_at: datetime
+    sender_name: Optional[str] = None
+    receiver_name: Optional[str] = None
+    from_user_name: Optional[str] = None
+    to_user_name: Optional[str] = None
+    receiver_phone: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

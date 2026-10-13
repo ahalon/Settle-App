@@ -1,7 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.auth import get_current_user, send_expo_push
 from app.api.balance import calculate_group_balances
@@ -99,6 +99,7 @@ def get_group_transfers(
 
     return (
         db.query(Transfer)
+        .options(joinedload(Transfer.sender), joinedload(Transfer.receiver))
         .filter(Transfer.group_id == group_id)
         .order_by(Transfer.created_at.desc())
         .all()

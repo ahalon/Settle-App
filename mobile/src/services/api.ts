@@ -50,6 +50,9 @@ export const login = (payload: { email: string; password: string }) =>
 export const getGroups = (token: string) =>
   axios.get<Group[]>(`${API_URL}/api/groups/my`, { headers: authHeaders(token) });
 
+export const getGroup = (groupId: number, token: string) =>
+  axios.get<Group>(`${API_URL}/api/groups/${groupId}`, { headers: authHeaders(token) });
+
 export const getGroupBalance = (groupId: number, token: string) =>
   axios.get<BalanceResponse>(`${API_URL}/api/groups/${groupId}/balance`, {
     headers: authHeaders(token),

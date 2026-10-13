@@ -78,6 +78,31 @@ class Transfer(Base):
     status = Column(String(20), nullable=False, default="pending")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    # Relacje
+    sender = relationship("User", foreign_keys=[sender_id])
+    receiver = relationship("User", foreign_keys=[receiver_id])
+    group = relationship("Group", foreign_keys=[group_id])
+
+    @property
+    def sender_name(self) -> str | None:
+        return self.sender.name if self.sender else None
+
+    @property
+    def receiver_name(self) -> str | None:
+        return self.receiver.name if self.receiver else None
+
+    @property
+    def from_user_name(self) -> str | None:
+        return self.sender.name if self.sender else None
+
+    @property
+    def to_user_name(self) -> str | None:
+        return self.receiver.name if self.receiver else None
+
+    @property
+    def receiver_phone(self) -> str | None:
+        return self.receiver.phone_number if self.receiver else None
+
 
 class Notification(Base):
     __tablename__ = "notifications"

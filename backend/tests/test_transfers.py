@@ -61,7 +61,21 @@ def test_transfer_lifecycle_pending_to_confirmed(
     transfer_data = response_declare.json()
     assert transfer_data["status"] == "pending"
     assert transfer_data["amount"] == 2000
+    assert transfer_data["sender_name"] == user_b.name
+    assert transfer_data["receiver_name"] == user_a.name
+    assert transfer_data["from_user_name"] == user_b.name
+    assert transfer_data["to_user_name"] == user_a.name
     transfer_id = transfer_data["id"]
+
+    # 1b. Pobranie listy transferów grupy
+    response_list = client.get(f"/api/groups/{group.id}/transfers", headers=auth_headers(user_a))
+    assert response_list.status_code == 200
+    transfers_list = response_list.json()
+    assert len(transfers_list) == 1
+    assert transfers_list[0]["sender_name"] == user_b.name
+    assert transfers_list[0]["receiver_name"] == user_a.name
+    assert transfers_list[0]["from_user_name"] == user_b.name
+    assert transfers_list[0]["to_user_name"] == user_a.name
 
     # 2. Zatwierdzenie przelewu przez odbiorcę (User A)
     response_confirm = client.post(
@@ -70,6 +84,8 @@ def test_transfer_lifecycle_pending_to_confirmed(
     )
     assert response_confirm.status_code == 200
     assert response_confirm.json()["status"] == "confirmed"
+    assert response_confirm.json()["sender_name"] == user_b.name
+    assert response_confirm.json()["receiver_name"] == user_a.name
 
     # 3. Weryfikacja bazy danych i salda końcowego
     db_session.expire_all()

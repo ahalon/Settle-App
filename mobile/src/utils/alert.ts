@@ -39,3 +39,4 @@ export const showAlert = (
 
   RNAlert.alert(title, message, buttons);
 };
+

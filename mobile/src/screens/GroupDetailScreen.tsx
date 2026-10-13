@@ -19,6 +19,7 @@ import {
   decideTransfer,
   deleteExpense,
   deleteTransfer,
+  getGroup,
   getGroupBalance,
   getGroupExpenses,
   getGroupTransfers,
@@ -57,6 +58,7 @@ const getInitialMonth = () => {
 
 export default function GroupDetailScreen({ token, currentUser, group, onBack }: GroupDetailScreenProps) {
   const initialMonth = getInitialMonth();
+  const [currentGroup, setCurrentGroup] = useState<Group>(group);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [balance, setBalance] = useState<BalanceResponse | null>(null);
@@ -76,25 +78,49 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const getMemberById = (id: number) => group.members.find((member) => member.id === id);
+  useEffect(() => {
+    setCurrentGroup(group);
+  }, [group]);
+
+  const getMemberById = (id: number) => {
+    return (
+      currentGroup.members?.find((member) => member.id === id) ||
+      group.members?.find((member) => member.id === id)
+    );
+  };
+
+  const formatParticipantName = (
+    userId: number,
+    backendName?: string | null
+  ): string => {
+    if (userId === currentUser.id) return 'Ty';
+    const member = getMemberById(userId);
+    if (member?.name) return member.name;
+    if (backendName && backendName.trim()) return backendName.trim();
+    return 'Nieznany';
+  };
 
   const getPayerName = (payerId: number) => {
     if (payerId === currentUser.id) return 'Ty';
-    return getMemberById(payerId)?.name || `ID: ${payerId}`;
+    return getMemberById(payerId)?.name || 'Nieznany';
   };
 
   const loadDetails = async () => {
     try {
-      const [expenseResponse, balanceResponse, transferResponse, summaryResponse] = await Promise.all([
+      const [expenseResponse, balanceResponse, transferResponse, summaryResponse, groupResponse] = await Promise.all([
         getGroupExpenses(group.id, token, year, month),
         getGroupBalance(group.id, token),
         getGroupTransfers(group.id, token),
         getMonthlySummary(group.id, token, year, month),
+        getGroup(group.id, token).catch(() => null),
       ]);
       setExpenses(expenseResponse.data);
       setBalance(balanceResponse.data);
       setTransfers(transferResponse.data);
       setMonthlySummary(summaryResponse.data);
+      if (groupResponse?.data) {
+        setCurrentGroup(groupResponse.data);
+      }
 
       const userSettlements = balanceResponse.data.suggested_settlements?.filter(
         (s) => s.from_user_id === currentUser.id
@@ -103,7 +129,7 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
         setTransferRecipientId((current) => current || userSettlements[0].to_user_id);
         setTransferAmount((current) => current || (userSettlements[0].amount_cents / 100).toFixed(2));
       } else {
-        const creditor = group.members.find(
+        const creditor = (groupResponse?.data?.members || currentGroup.members || group.members).find(
           (member) => (balanceResponse.data.all_balances?.[String(member.id)] || 0) > 0
         );
         setTransferRecipientId((current) => current || creditor?.id || null);
@@ -127,8 +153,9 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
   }, [group.id, token, year, month]);
 
   const handleCopyCode = async () => {
-    await Clipboard.setStringAsync(group.join_code);
-    showAlert('Skopiowano', `Kod "${group.join_code}" został skopiowany do schowka.`);
+    const code = currentGroup.join_code || group.join_code;
+    await Clipboard.setStringAsync(code);
+    showAlert('Skopiowano', `Kod "${code}" został skopiowany do schowka.`);
   };
 
   const handleSelectSuggestedSettlement = (settlement: SettlementSuggestion) => {
@@ -267,14 +294,14 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
           <Text style={styles.backText}>← Wróć</Text>
         </TouchableOpacity>
         <Text style={styles.groupName} numberOfLines={1}>
-          {group.name}
+          {currentGroup.name || group.name}
         </Text>
       </View>
 
       <TouchableOpacity style={styles.codeRow} onPress={handleCopyCode} activeOpacity={0.7}>
         <Text style={styles.codeLabel}>KOD DOŁĄCZENIA (KLIKNIJ):</Text>
         <View style={styles.codeBadge}>
-          <Text style={styles.codeValue}>{group.join_code}</Text>
+          <Text style={styles.codeValue}>{currentGroup.join_code || group.join_code}</Text>
         </View>
       </TouchableOpacity>
 
@@ -365,13 +392,21 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
             .filter((transfer) => transfer.status === 'pending')
             .map((transfer) => {
               const receiver = getMemberById(transfer.receiver_id);
+              const senderDisplayName = formatParticipantName(
+                transfer.sender_id,
+                transfer.sender_name || transfer.from_user_name
+              );
+              const receiverDisplayName = formatParticipantName(
+                transfer.receiver_id,
+                transfer.receiver_name || transfer.to_user_name
+              );
               return (
                 <TransferItem
                   key={transfer.id}
                   transfer={transfer}
-                  senderName={getPayerName(transfer.sender_id)}
-                  receiverName={getPayerName(transfer.receiver_id)}
-                  receiverPhone={receiver?.phone_number}
+                  senderName={senderDisplayName}
+                  receiverName={receiverDisplayName}
+                  receiverPhone={receiver?.phone_number || transfer.receiver_phone}
                   currentUserId={currentUser.id}
                   onDecision={(decision) => handleDecision(transfer.id, decision)}
                   onDelete={() => handleDeleteTransfer(transfer.id)}
@@ -384,13 +419,21 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
             .filter((transfer) => transfer.status === 'confirmed')
             .map((transfer) => {
               const receiver = getMemberById(transfer.receiver_id);
+              const senderDisplayName = formatParticipantName(
+                transfer.sender_id,
+                transfer.sender_name || transfer.from_user_name
+              );
+              const receiverDisplayName = formatParticipantName(
+                transfer.receiver_id,
+                transfer.receiver_name || transfer.to_user_name
+              );
               return (
                 <TransferItem
                   key={transfer.id}
                   transfer={transfer}
-                  senderName={getPayerName(transfer.sender_id)}
-                  receiverName={getPayerName(transfer.receiver_id)}
-                  receiverPhone={receiver?.phone_number}
+                  senderName={senderDisplayName}
+                  receiverName={receiverDisplayName}
+                  receiverPhone={receiver?.phone_number || transfer.receiver_phone}
                   currentUserId={currentUser.id}
                   onDecision={(decision) => handleDecision(transfer.id, decision)}
                   onDelete={() => handleDeleteTransfer(transfer.id)}
@@ -405,13 +448,21 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
                 .filter((transfer) => transfer.status === 'rejected')
                 .map((transfer) => {
                   const receiver = getMemberById(transfer.receiver_id);
+                  const senderDisplayName = formatParticipantName(
+                    transfer.sender_id,
+                    transfer.sender_name || transfer.from_user_name
+                  );
+                  const receiverDisplayName = formatParticipantName(
+                    transfer.receiver_id,
+                    transfer.receiver_name || transfer.to_user_name
+                  );
                   return (
                     <TransferItem
                       key={transfer.id}
                       transfer={transfer}
-                      senderName={getPayerName(transfer.sender_id)}
-                      receiverName={getPayerName(transfer.receiver_id)}
-                      receiverPhone={receiver?.phone_number}
+                      senderName={senderDisplayName}
+                      receiverName={receiverDisplayName}
+                      receiverPhone={receiver?.phone_number || transfer.receiver_phone}
                       currentUserId={currentUser.id}
                       onDecision={(decision) => handleDecision(transfer.id, decision)}
                       onDelete={() => handleDeleteTransfer(transfer.id)}
@@ -465,7 +516,7 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
         visible={isExpenseModalOpen}
         onClose={() => setIsExpenseModalOpen(false)}
         onSubmit={handleAddExpenseSubmit}
-        group={group}
+        group={currentGroup}
         currentUser={currentUser}
         loading={loading}
       />
@@ -474,7 +525,7 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
         visible={isTransferModalOpen}
         onClose={() => setIsTransferModalOpen(false)}
         onSubmit={handleDeclareTransferSubmit}
-        group={group}
+        group={currentGroup}
         currentUser={currentUser}
         recipientId={transferRecipientId}
         onSelectRecipient={setTransferRecipientId}

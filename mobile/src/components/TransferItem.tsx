@@ -28,10 +28,12 @@ export default function TransferItem({
   const isReceiver = transfer.receiver_id === currentUserId;
   const pending = transfer.status === 'pending';
 
+  const effectivePhone = receiverPhone || transfer.receiver_phone;
+
   const handleCopyPhone = async () => {
-    if (!receiverPhone) return;
-    await Clipboard.setStringAsync(receiverPhone);
-    showAlert('Skopiowano', `Numer ${receiverPhone} został skopiowany do schowka.`);
+    if (!effectivePhone) return;
+    await Clipboard.setStringAsync(effectivePhone);
+    showAlert('Skopiowano', `Numer ${effectivePhone} został skopiowany do schowka.`);
   };
 
   const itemStyle = pending
@@ -71,9 +73,9 @@ export default function TransferItem({
         {senderName} → {receiverName}
       </Text>
 
-      {isSender && receiverPhone && (
+      {isSender && effectivePhone && (
         <TouchableOpacity style={styles.phoneBadge} onPress={handleCopyPhone}>
-          <Text style={styles.phoneText}>BLIK: {receiverPhone} (kliknij, by skopiować)</Text>
+          <Text style={styles.phoneText}>BLIK: {effectivePhone} (kliknij, by skopiować)</Text>
         </TouchableOpacity>
       )}
 

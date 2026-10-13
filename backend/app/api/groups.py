@@ -47,3 +47,15 @@ def join_group(
 @router.get("/groups/my", response_model=List[GroupOut])
 def get_my_groups(current_user: User = Depends(get_current_user)):
     return current_user.groups
+
+
+@router.get("/groups/{group_id}", response_model=GroupOut)
+def get_group(
+    group_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group or current_user not in group.members:
+        raise HTTPException(status_code=403, detail="Brak dostępu do tej grupy.")
+    return group
