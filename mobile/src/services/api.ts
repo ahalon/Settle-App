@@ -18,6 +18,9 @@ import {
 export const API_URL =
   process.env.EXPO_PUBLIC_API_URL || 'https://settle-app-lnyt.onrender.com';
 
+// Render free tier cold start can take up to 50 seconds; keep timeout at 65 seconds
+axios.defaults.timeout = 65000;
+
 const authHeaders = (token: string) => ({
   Authorization: `Bearer ${token}`,
 });
@@ -32,11 +35,34 @@ export const setOnUnauthorizedHandler = (handler: UnauthorizedHandler | null) =>
 axios.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error?.response?.status === 401 && !error?.config?.url?.includes('/api/auth/login')) {
+    const config = error?.config;
+
+    if (error?.response?.status === 401 && !config?.url?.includes('/api/auth/login')) {
       if (unauthorizedHandler) {
         unauthorizedHandler();
       }
+      return Promise.reject(error);
     }
+
+    // Auto-retry cold start transient network drops or 502/503/504 gateways (up to 2 retries)
+    if (config && (!config._retryCount || config._retryCount < 2)) {
+      const status = error?.response?.status;
+      const isTransientColdStart =
+        error?.code === 'ECONNABORTED' ||
+        error?.message === 'Network Error' ||
+        !error?.response ||
+        status === 502 ||
+        status === 503 ||
+        status === 504;
+
+      // Do not retry 4xx errors (client errors)
+      if (isTransientColdStart && (!status || status >= 500)) {
+        config._retryCount = (config._retryCount || 0) + 1;
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        return axios(config);
+      }
+    }
+
     return Promise.reject(error);
   }
 );

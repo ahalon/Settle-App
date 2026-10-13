@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -14,7 +15,7 @@ import {
 } from 'react-native';
 
 import { CurrentUser, Group } from '../types';
-import { showAlert } from '../utils/alert';
+import { getErrorMessage } from '../utils/errorHandler';
 import ReceiptPicker from './ReceiptPicker';
 
 interface AddExpenseModalProps {
@@ -45,6 +46,7 @@ export default function AddExpenseModal({
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const resetForm = () => {
     setTitle('');
@@ -52,6 +54,7 @@ export default function AddExpenseModal({
     setDescription('');
     setReceiptImage(null);
     setSelectedPayerId(currentUser.id);
+    setFormError(null);
   };
 
   const handleClose = () => {
@@ -61,24 +64,29 @@ export default function AddExpenseModal({
   };
 
   const handleSubmit = async () => {
+    setFormError(null);
     if (!title.trim() || !amount.trim() || !selectedPayerId) {
-      showAlert('Błąd', 'Wypełnij wszystkie pola wydatku');
+      setFormError('Wypełnij wszystkie pola wydatku');
       return;
     }
     const amountInCents = Math.round(parseFloat(amount.replace(',', '.')) * 100);
     if (!Number.isFinite(amountInCents) || amountInCents <= 0) {
-      showAlert('Błąd', 'Wpisz poprawną kwotę');
+      setFormError('Wpisz poprawną kwotę');
       return;
     }
 
-    await onSubmit({
-      title: title.trim(),
-      amountCents: amountInCents,
-      payerId: selectedPayerId,
-      description: description.trim() || null,
-      receiptImage,
-    });
-    resetForm();
+    try {
+      await onSubmit({
+        title: title.trim(),
+        amountCents: amountInCents,
+        payerId: selectedPayerId,
+        description: description.trim() || null,
+        receiptImage,
+      });
+      resetForm();
+    } catch (err: any) {
+      setFormError(getErrorMessage(err, 'Nie udało się zapisać wydatku'));
+    }
   };
 
   const isWeb = Platform.OS === 'web';
@@ -144,10 +152,19 @@ export default function AddExpenseModal({
           />
           <ReceiptPicker imageUri={receiptImage} onChange={setReceiptImage} />
 
-          <TouchableOpacity style={styles.actionBtn} onPress={handleSubmit} disabled={loading}>
-            <Text style={styles.actionBtnText}>
-              {loading ? 'Zapisywanie...' : 'Zapisz wydatek'}
-            </Text>
+          {formError && <Text style={styles.inlineError}>{formError}</Text>}
+
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={handleSubmit}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.actionBtnText}>Zapisz wydatek</Text>
+            )}
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -225,4 +242,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   actionBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  inlineError: {
+    color: '#f87171',
+    fontSize: 13,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
 });

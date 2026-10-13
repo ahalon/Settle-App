@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -16,6 +17,7 @@ import * as Clipboard from 'expo-clipboard';
 
 import { CurrentUser, Group } from '../types';
 import { showAlert } from '../utils/alert';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface DeclareTransferModalProps {
   visible: boolean;
@@ -46,6 +48,8 @@ export default function DeclareTransferModal({
   allBalances,
   loading,
 }: DeclareTransferModalProps) {
+  const [formError, setFormError] = useState<string | null>(null);
+
   const selectedRecipientUser = recipientId
     ? group.members.find((m) => m.id === recipientId)
     : null;
@@ -56,8 +60,28 @@ export default function DeclareTransferModal({
   };
 
   const handleClose = () => {
+    setFormError(null);
     Keyboard.dismiss();
     onClose();
+  };
+
+  const handleFormSubmit = async () => {
+    setFormError(null);
+    if (!recipientId || !amount.trim()) {
+      setFormError('Wybierz odbiorcę i wpisz kwotę przelewu');
+      return;
+    }
+    const cents = Math.round(parseFloat(amount.replace(',', '.')) * 100);
+    if (!Number.isFinite(cents) || cents <= 0) {
+      setFormError('Wpisz poprawną kwotę przelewu');
+      return;
+    }
+    try {
+      await onSubmit();
+      setFormError(null);
+    } catch (err: any) {
+      setFormError(getErrorMessage(err, 'Nie udało się zadeklarować przelewu'));
+    }
   };
 
   const isWeb = Platform.OS === 'web';
@@ -120,10 +144,19 @@ export default function DeclareTransferModal({
             onChangeText={onChangeAmount}
           />
 
-          <TouchableOpacity style={styles.actionBtn} onPress={onSubmit} disabled={loading}>
-            <Text style={styles.actionBtnText}>
-              {loading ? 'Wysyłanie...' : 'Zadeklaruj przelew'}
-            </Text>
+          {formError && <Text style={styles.inlineError}>{formError}</Text>}
+
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={handleFormSubmit}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.actionBtnText}>Zadeklaruj przelew</Text>
+            )}
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -202,4 +235,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   actionBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  inlineError: {
+    color: '#f87171',
+    fontSize: 13,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
 });

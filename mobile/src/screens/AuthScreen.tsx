@@ -17,7 +17,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { saveToken, saveUserData } from '../../authStorage';
 import { login, register } from '../services/api';
 import { CurrentUser } from '../types';
-import { showAlert } from '../utils/alert';
 import { getErrorMessage } from '../utils/errorHandler';
 
 interface AuthScreenProps {
@@ -44,16 +43,15 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
     const cleanPhone = phone.replace(/\D/g, '');
 
     if (!trimmedEmail || !password || (!isLoginMode && (!trimmedName || !cleanPhone))) {
-      const msg = 'Uzupełnij wszystkie wymagane pola';
-      setStatusMessage({ type: 'error', text: msg });
-      showAlert('Błąd', msg);
+      setStatusMessage({ type: 'error', text: 'Uzupełnij wszystkie wymagane pola' });
       return;
     }
 
     if (!isLoginMode && cleanPhone.length !== 9) {
-      const msg = 'Numer telefonu musi składać się z dokładnie 9 cyfr';
-      setStatusMessage({ type: 'error', text: msg });
-      showAlert('Błąd', msg);
+      setStatusMessage({
+        type: 'error',
+        text: 'Numer telefonu musi składać się z dokładnie 9 cyfr',
+      });
       return;
     }
 
@@ -82,23 +80,14 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
         });
 
         const successText =
-          'Wysłaliśmy link weryfikacyjny na Twój adres e-mail. Sprawdź skrzynkę (oraz folder SPAM), kliknij link, a następnie zaloguj się.';
+          'Konto utworzone! Wysłaliśmy link weryfikacyjny na Twój adres e-mail. Sprawdź skrzynkę (oraz folder SPAM), kliknij link, a następnie zaloguj się.';
         setStatusMessage({ type: 'success', text: successText });
-
-        showAlert('Konto utworzone!', successText, [
-          {
-            text: 'OK',
-            onPress: () => {
-              setPassword('');
-              setIsLoginMode(true);
-            },
-          },
-        ]);
+        setPassword('');
+        setIsLoginMode(true);
       }
     } catch (err: any) {
       const errMsg = getErrorMessage(err, 'Wystąpił błąd autoryzacji');
       setStatusMessage({ type: 'error', text: errMsg });
-      showAlert('Błąd', errMsg);
     } finally {
       setLoading(false);
     }

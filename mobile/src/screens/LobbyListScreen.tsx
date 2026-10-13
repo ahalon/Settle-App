@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Keyboard,
   RefreshControl,
   ScrollView,
@@ -15,7 +16,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { removeToken } from '../../authStorage';
 import { createGroup, getGroupBalance, getGroups, joinGroup } from '../services/api';
 import { CurrentUser, DashboardAction, Group } from '../types';
-import { showAlert } from '../utils/alert';
 import { getErrorMessage } from '../utils/errorHandler';
 
 interface LobbyListScreenProps {
@@ -28,6 +28,7 @@ interface LobbyListScreenProps {
 export default function LobbyListScreen({ token, currentUser, onSelectGroup, onLogout }: LobbyListScreenProps) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [action, setAction] = useState<DashboardAction>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [newGroupName, setNewGroupName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,7 +47,7 @@ export default function LobbyListScreen({ token, currentUser, onSelectGroup, onL
       }));
       setGroups(groupsWithBalances);
     } catch (err: any) {
-      showAlert('Błąd', getErrorMessage(err, 'Nie udało się pobrać grup'));
+      console.warn('Failed to load groups on startup:', err);
     }
   };
 
@@ -64,6 +65,7 @@ export default function LobbyListScreen({ token, currentUser, onSelectGroup, onL
   const handleCreate = async () => {
     const name = newGroupName.trim();
     if (!name) return;
+    setActionError(null);
     setLoading(true);
     try {
       const response = await createGroup(token, { name });
@@ -72,13 +74,14 @@ export default function LobbyListScreen({ token, currentUser, onSelectGroup, onL
       await loadGroups();
       onSelectGroup(response.data);
     } catch (err: any) {
-      showAlert('Błąd', getErrorMessage(err, 'Nie udało się stworzyć grupy'));
+      setActionError(getErrorMessage(err, 'Nie udało się stworzyć grupy'));
     } finally { setLoading(false); }
   };
 
   const handleJoin = async () => {
     const code = joinCode.trim().toUpperCase();
     if (!code) return;
+    setActionError(null);
     setLoading(true);
     try {
       const response = await joinGroup(token, { join_code: code });
@@ -87,7 +90,7 @@ export default function LobbyListScreen({ token, currentUser, onSelectGroup, onL
       await loadGroups();
       onSelectGroup(response.data);
     } catch (err: any) {
-      showAlert('Błąd', getErrorMessage(err, 'Nieprawidłowy kod'));
+      setActionError(getErrorMessage(err, 'Nieprawidłowy kod'));
     } finally { setLoading(false); }
   };
 
@@ -119,15 +122,76 @@ export default function LobbyListScreen({ token, currentUser, onSelectGroup, onL
         }
       >
         <View style={styles.dashboardActions}>
-          <TouchableOpacity style={[styles.dashboardAction, styles.createAction]} onPress={() => setAction(action === 'create' ? null : 'create')}>
-            <Text style={styles.actionIcon}>＋</Text><Text style={styles.actionTitle}>Utwórz lobby</Text><Text style={styles.actionHint}>Stwórz nowe miejsce dla grupy</Text>
+          <TouchableOpacity
+            style={[styles.dashboardAction, styles.createAction]}
+            onPress={() => {
+              setActionError(null);
+              setAction(action === 'create' ? null : 'create');
+            }}
+          >
+            <Text style={styles.actionIcon}>＋</Text>
+            <Text style={styles.actionTitle}>Utwórz lobby</Text>
+            <Text style={styles.actionHint}>Stwórz nowe miejsce dla grupy</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.dashboardAction, styles.joinAction]} onPress={() => setAction(action === 'join' ? null : 'join')}>
-            <Text style={styles.actionIcon}>⌁</Text><Text style={styles.actionTitle}>Dołącz po kodzie</Text><Text style={styles.actionHint}>Wpisz kod otrzymany od grupy</Text>
+          <TouchableOpacity
+            style={[styles.dashboardAction, styles.joinAction]}
+            onPress={() => {
+              setActionError(null);
+              setAction(action === 'join' ? null : 'join');
+            }}
+          >
+            <Text style={styles.actionIcon}>⌁</Text>
+            <Text style={styles.actionTitle}>Dołącz po kodzie</Text>
+            <Text style={styles.actionHint}>Wpisz kod otrzymany od grupy</Text>
           </TouchableOpacity>
         </View>
-        {action === 'create' && <View style={styles.card}><Text style={styles.cardTitle}>Utwórz nowe lobby</Text><TextInput style={styles.input} placeholder="Nazwa (np. Mieszkanie Kraków)" placeholderTextColor="#64748b" value={newGroupName} onChangeText={setNewGroupName} /><TouchableOpacity style={styles.actionBtn} onPress={handleCreate} disabled={loading}><Text style={styles.actionBtnText}>Stwórz lobby</Text></TouchableOpacity></View>}
-        {action === 'join' && <View style={styles.card}><Text style={styles.cardTitle}>Dołącz po kodzie</Text><TextInput style={styles.input} placeholder="Wpisz 6-znakowy kod" placeholderTextColor="#64748b" autoCapitalize="characters" value={joinCode} onChangeText={setJoinCode} /><TouchableOpacity style={[styles.actionBtn, styles.secondaryBtn]} onPress={handleJoin} disabled={loading}><Text style={styles.actionBtnText}>Dołącz do ekipy</Text></TouchableOpacity></View>}
+
+        {action === 'create' && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Utwórz nowe lobby</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nazwa (np. Mieszkanie Kraków)"
+              placeholderTextColor="#64748b"
+              value={newGroupName}
+              onChangeText={setNewGroupName}
+            />
+            {actionError && <Text style={styles.inlineError}>{actionError}</Text>}
+            <TouchableOpacity style={styles.actionBtn} onPress={handleCreate} disabled={loading}>
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.actionBtnText}>Stwórz lobby</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {action === 'join' && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Dołącz po kodzie</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Wpisz 6-znakowy kod"
+              placeholderTextColor="#64748b"
+              autoCapitalize="characters"
+              value={joinCode}
+              onChangeText={setJoinCode}
+            />
+            {actionError && <Text style={styles.inlineError}>{actionError}</Text>}
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.secondaryBtn]}
+              onPress={handleJoin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.actionBtnText}>Dołącz do ekipy</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
         <Text style={styles.activeTitle}>Twoje aktywne lobby</Text>
         {groups.map((group) => <TouchableOpacity key={group.id} style={[styles.groupCard, balanceStyle(group.balanceCents)]} onPress={() => onSelectGroup(group)}><View><Text style={styles.groupName}>{group.name}</Text><Text style={styles.groupMeta}>Członków: {group.members?.length || 1} • Kod: {group.join_code}</Text><Text style={styles.groupBalance}>Saldo: {group.balanceSummary || 'Brak danych'}</Text></View><Text style={styles.arrow}>→</Text></TouchableOpacity>)}
         {!groups.length && <Text style={styles.emptyText}>Nie należysz jeszcze do żadnego lobby.</Text>}
@@ -174,4 +238,10 @@ const styles = StyleSheet.create({
   groupBalance: { color: '#38bdf8', fontSize: 11, fontWeight: '600', marginTop: 4 },
   arrow: { color: '#38bdf8', fontSize: 20, fontWeight: '700' },
   emptyText: { color: '#64748b', textAlign: 'center', marginTop: 14, fontSize: 13 },
+  inlineError: {
+    color: '#f87171',
+    fontSize: 13,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
 });

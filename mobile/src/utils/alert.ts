@@ -27,9 +27,6 @@ export const showAlert = (
       return;
     }
 
-    if (typeof window !== 'undefined') {
-      window.alert(text);
-    }
     const singleBtn = buttons && buttons[0];
     if (singleBtn?.onPress) {
       singleBtn.onPress();

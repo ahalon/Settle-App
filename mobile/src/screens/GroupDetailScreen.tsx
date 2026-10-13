@@ -135,7 +135,7 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
         setTransferRecipientId((current) => current || creditor?.id || null);
       }
     } catch (err: any) {
-      showAlert('Błąd', getErrorMessage(err, 'Nie udało się pobrać danych grupy'));
+      console.warn('Failed to load group details:', err);
     }
   };
 
@@ -187,8 +187,6 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
       setIsExpenseModalOpen(false);
       Keyboard.dismiss();
       await loadDetails();
-    } catch (err: any) {
-      showAlert('Błąd', getErrorMessage(err, 'Nie udało się zapisać wydatku'));
     } finally {
       setLoading(false);
     }
@@ -206,7 +204,7 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
             await deleteExpense(token, expenseId);
             await loadDetails();
           } catch (err: any) {
-            showAlert('Błąd', getErrorMessage(err, 'Nie udało się usunąć wydatku'));
+            console.warn('Failed to delete expense:', err);
           } finally {
             setLoading(false);
           }
@@ -216,24 +214,14 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
   };
 
   const handleDeclareTransferSubmit = async () => {
-    if (!transferRecipientId || !transferAmount.trim()) {
-      showAlert('Błąd', 'Wybierz odbiorcę i wpisz kwotę przelewu');
-      return;
-    }
     const cents = Math.round(parseFloat(transferAmount.replace(',', '.')) * 100);
-    if (!Number.isFinite(cents) || cents <= 0) {
-      showAlert('Błąd', 'Wpisz poprawną kwotę przelewu');
-      return;
-    }
     setLoading(true);
     try {
-      await declareTransfer(group.id, token, { receiver_id: transferRecipientId, amount: cents });
+      await declareTransfer(group.id, token, { receiver_id: transferRecipientId!, amount: cents });
       setTransferAmount('');
       setIsTransferModalOpen(false);
       Keyboard.dismiss();
       await loadDetails();
-    } catch (err: any) {
-      showAlert('Błąd', getErrorMessage(err, 'Nie udało się zadeklarować przelewu'));
     } finally {
       setLoading(false);
     }
