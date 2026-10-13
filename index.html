@@ -24,8 +24,6 @@
       body {
         height: 100%;
         background-color: #0f172a;
-        -webkit-user-select: none;
-        user-select: none;
         -webkit-tap-highlight-color: transparent;
       }
       body {
@@ -37,6 +35,11 @@
         flex: 1;
         background-color: #0f172a;
       }
+      input, textarea {
+        user-select: text !important;
+        -webkit-user-select: text !important;
+        pointer-events: auto !important;
+      }
     </style>
   <link rel="icon" href="/Settle-App/favicon.ico"/></head>
 
@@ -45,6 +48,6 @@
       Musisz włączyć obsługę JavaScript, aby korzystać z SettleApp.
     </noscript>
     <div id="root"></div>
-  <script src="/Settle-App/_expo/static/js/web/index-6cc1518c34d216b8c9d9b23e91c40d5c.js" defer></script>
+  <script src="/Settle-App/_expo/static/js/web/index-121043ec317778292958ac437bc988b7.js" defer></script>
 </body>
 </html>
