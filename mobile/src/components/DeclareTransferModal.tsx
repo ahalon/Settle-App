@@ -60,79 +60,89 @@ export default function DeclareTransferModal({
     onClose();
   };
 
+  const isWeb = Platform.OS === 'web';
+
+  const modalBody = (
+    <View style={styles.modalContentWrapper}>
+      <View style={styles.formModalSheet}>
+        <View style={styles.modalHeaderBar}>
+          <Text style={styles.modalSheetTitle}>Oddaj pieniądze</Text>
+          <TouchableOpacity style={styles.sheetCloseBtn} onPress={handleClose}>
+            <Text style={styles.sheetCloseText}>✕</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <Text style={styles.transferHint}>
+            Twój łączny dług: {(Math.abs(totalDebtCents) / 100).toFixed(2)} PLN
+          </Text>
+
+          <Text style={styles.subLabel}>Komu oddajesz?</Text>
+          <View style={styles.transferRecipients}>
+            {group.members
+              .filter(
+                (member) =>
+                  member.id !== currentUser.id &&
+                  (allBalances?.[String(member.id)] || 0) > 0
+              )
+              .map((member) => (
+                <TouchableOpacity
+                  key={member.id}
+                  style={[
+                    styles.transferRecipient,
+                    recipientId === member.id && styles.transferRecipientActive,
+                  ]}
+                  onPress={() => onSelectRecipient(member.id)}
+                >
+                  <Text style={styles.transferRecipientText}>{member.name}</Text>
+                </TouchableOpacity>
+              ))}
+          </View>
+
+          {selectedRecipientUser?.phone_number && (
+            <TouchableOpacity
+              style={styles.blikBadge}
+              onPress={() => handleCopyBLIK(selectedRecipientUser.phone_number!)}
+            >
+              <Text style={styles.blikBadgeText}>
+                BLIK do {selectedRecipientUser.name}: {selectedRecipientUser.phone_number} (kopiuj)
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <Text style={styles.subLabel}>Kwota przelewu (PLN)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="np. 50.00"
+            placeholderTextColor="#64748b"
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={onChangeAmount}
+          />
+
+          <TouchableOpacity style={styles.actionBtn} onPress={onSubmit} disabled={loading}>
+            <Text style={styles.actionBtnText}>
+              {loading ? 'Wysyłanie...' : 'Zadeklaruj przelew'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </View>
+  );
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalBackdrop}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalContentWrapper}>
-            <View style={styles.formModalSheet}>
-              <View style={styles.modalHeaderBar}>
-                <Text style={styles.modalSheetTitle}>Oddaj pieniądze</Text>
-                <TouchableOpacity style={styles.sheetCloseBtn} onPress={handleClose}>
-                  <Text style={styles.sheetCloseText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <Text style={styles.transferHint}>
-                  Twój łączny dług: {(Math.abs(totalDebtCents) / 100).toFixed(2)} PLN
-                </Text>
-
-                <Text style={styles.subLabel}>Komu oddajesz?</Text>
-                <View style={styles.transferRecipients}>
-                  {group.members
-                    .filter(
-                      (member) =>
-                        member.id !== currentUser.id &&
-                        (allBalances?.[String(member.id)] || 0) > 0
-                    )
-                    .map((member) => (
-                      <TouchableOpacity
-                        key={member.id}
-                        style={[
-                          styles.transferRecipient,
-                          recipientId === member.id && styles.transferRecipientActive,
-                        ]}
-                        onPress={() => onSelectRecipient(member.id)}
-                      >
-                        <Text style={styles.transferRecipientText}>{member.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                </View>
-
-                {selectedRecipientUser?.phone_number && (
-                  <TouchableOpacity
-                    style={styles.blikBadge}
-                    onPress={() => handleCopyBLIK(selectedRecipientUser.phone_number!)}
-                  >
-                    <Text style={styles.blikBadgeText}>
-                      BLIK do {selectedRecipientUser.name}: {selectedRecipientUser.phone_number} (kopiuj)
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                <Text style={styles.subLabel}>Kwota przelewu (PLN)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="np. 50.00"
-                  placeholderTextColor="#64748b"
-                  keyboardType="numeric"
-                  value={amount}
-                  onChangeText={onChangeAmount}
-                />
-
-                <TouchableOpacity style={styles.actionBtn} onPress={onSubmit} disabled={loading}>
-                  <Text style={styles.actionBtnText}>
-                    {loading ? 'Wysyłanie...' : 'Zadeklaruj przelew'}
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
+        {isWeb ? (
+          modalBody
+        ) : (
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            {modalBody}
+          </TouchableWithoutFeedback>
+        )}
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -181,6 +191,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     fontSize: 15,
+    userSelect: 'text',
   },
   actionBtn: {
     backgroundColor: '#2563eb',

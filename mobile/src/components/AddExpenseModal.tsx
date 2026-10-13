@@ -81,82 +81,92 @@ export default function AddExpenseModal({
     resetForm();
   };
 
+  const isWeb = Platform.OS === 'web';
+
+  const modalBody = (
+    <View style={styles.modalContentWrapper}>
+      <View style={styles.formModalSheet}>
+        <View style={styles.modalHeaderBar}>
+          <Text style={styles.modalSheetTitle}>Nowy wydatek</Text>
+          <TouchableOpacity style={styles.sheetCloseBtn} onPress={handleClose}>
+            <Text style={styles.sheetCloseText}>✕</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <Text style={styles.subLabel}>Kto zapłacił?</Text>
+          <View style={styles.payerSelector}>
+            {group.members.map((member) => (
+              <TouchableOpacity
+                key={member.id}
+                style={[
+                  styles.payerOption,
+                  selectedPayerId === member.id && styles.payerOptionActive,
+                ]}
+                onPress={() => setSelectedPayerId(member.id)}
+              >
+                <Text
+                  style={[
+                    styles.payerOptionText,
+                    selectedPayerId === member.id && styles.payerOptionTextActive,
+                  ]}
+                >
+                  {member.id === currentUser.id ? 'Ja' : member.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Tytuł wydatku (np. Zakupy Biedronka)"
+            placeholderTextColor="#64748b"
+            value={title}
+            onChangeText={setTitle}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Kwota (PLN)"
+            placeholderTextColor="#64748b"
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={setAmount}
+          />
+          <TextInput
+            style={[styles.input, styles.descriptionInput]}
+            placeholder="Opis (opcjonalnie)"
+            placeholderTextColor="#64748b"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
+          <ReceiptPicker imageUri={receiptImage} onChange={setReceiptImage} />
+
+          <TouchableOpacity style={styles.actionBtn} onPress={handleSubmit} disabled={loading}>
+            <Text style={styles.actionBtnText}>
+              {loading ? 'Zapisywanie...' : 'Zapisz wydatek'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </View>
+  );
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalBackdrop}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalContentWrapper}>
-            <View style={styles.formModalSheet}>
-              <View style={styles.modalHeaderBar}>
-                <Text style={styles.modalSheetTitle}>Nowy wydatek</Text>
-                <TouchableOpacity style={styles.sheetCloseBtn} onPress={handleClose}>
-                  <Text style={styles.sheetCloseText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <Text style={styles.subLabel}>Kto zapłacił?</Text>
-                <View style={styles.payerSelector}>
-                  {group.members.map((member) => (
-                    <TouchableOpacity
-                      key={member.id}
-                      style={[
-                        styles.payerOption,
-                        selectedPayerId === member.id && styles.payerOptionActive,
-                      ]}
-                      onPress={() => setSelectedPayerId(member.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.payerOptionText,
-                          selectedPayerId === member.id && styles.payerOptionTextActive,
-                        ]}
-                      >
-                        {member.id === currentUser.id ? 'Ja' : member.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Tytuł wydatku (np. Zakupy Biedronka)"
-                  placeholderTextColor="#64748b"
-                  value={title}
-                  onChangeText={setTitle}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Kwota (PLN)"
-                  placeholderTextColor="#64748b"
-                  keyboardType="numeric"
-                  value={amount}
-                  onChangeText={setAmount}
-                />
-                <TextInput
-                  style={[styles.input, styles.descriptionInput]}
-                  placeholder="Opis (opcjonalnie)"
-                  placeholderTextColor="#64748b"
-                  value={description}
-                  onChangeText={setDescription}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
-                <ReceiptPicker imageUri={receiptImage} onChange={setReceiptImage} />
-
-                <TouchableOpacity style={styles.actionBtn} onPress={handleSubmit} disabled={loading}>
-                  <Text style={styles.actionBtnText}>
-                    {loading ? 'Zapisywanie...' : 'Zapisz wydatek'}
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
+        {isWeb ? (
+          modalBody
+        ) : (
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            {modalBody}
+          </TouchableWithoutFeedback>
+        )}
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -203,6 +213,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     fontSize: 15,
+    userSelect: 'text',
   },
   descriptionInput: { minHeight: 72 },
   actionBtn: {

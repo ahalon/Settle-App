@@ -93,6 +93,91 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
     }
   };
 
+  const isWeb = Platform.OS === 'web';
+
+  const formContent = (
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.headerBox}>
+        <Text style={styles.title}>SettleApp</Text>
+        <Text style={styles.subtitle}>
+          {isLoginMode ? 'Zaloguj się do swojego konta' : 'Załóż nowe konto'}
+        </Text>
+      </View>
+
+      <View style={styles.card}>
+        {!isLoginMode && (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Twoje imię"
+              placeholderTextColor="#64748b"
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+              blurOnSubmit={false}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Numer telefonu (9 cyfr)"
+              placeholderTextColor="#64748b"
+              keyboardType="number-pad"
+              maxLength={9}
+              value={phone}
+              onChangeText={(val) => setPhone(val.replace(/\D/g, ''))}
+              blurOnSubmit={false}
+            />
+          </>
+        )}
+
+        <TextInput
+          style={styles.input}
+          placeholder="Adres e-mail"
+          placeholderTextColor="#64748b"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
+          blurOnSubmit={false}
+        />
+
+        <TextInput
+          style={styles.input}
+          placeholder="Hasło"
+          placeholderTextColor="#64748b"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+
+        <TouchableOpacity style={styles.mainButton} onPress={handleSubmit} disabled={loading}>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.mainButtonText}>
+              {isLoginMode ? 'Zaloguj się' : 'Zarejestruj'}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.switchButton}
+          onPress={() => {
+            Keyboard.dismiss();
+            setIsLoginMode((value) => !value);
+          }}
+        >
+          <Text style={styles.switchButtonText}>
+            {isLoginMode ? 'Nie masz jeszcze konta? Zarejestruj się' : 'Masz już konto? Zaloguj się'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -100,88 +185,13 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.headerBox}>
-              <Text style={styles.title}>SettleApp</Text>
-              <Text style={styles.subtitle}>
-                {isLoginMode ? 'Zaloguj się do swojego konta' : 'Załóż nowe konto'}
-              </Text>
-            </View>
-
-            <View style={styles.card}>
-              {!isLoginMode && (
-                <>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Twoje imię"
-                    placeholderTextColor="#64748b"
-                    value={name}
-                    onChangeText={setName}
-                    autoCapitalize="words"
-                    blurOnSubmit={false}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Numer telefonu (9 cyfr)"
-                    placeholderTextColor="#64748b"
-                    keyboardType="number-pad"
-                    maxLength={9}
-                    value={phone}
-                    onChangeText={(val) => setPhone(val.replace(/\D/g, ''))}
-                    blurOnSubmit={false}
-                  />
-                </>
-              )}
-
-              <TextInput
-                style={styles.input}
-                placeholder="Adres e-mail"
-                placeholderTextColor="#64748b"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={email}
-                onChangeText={setEmail}
-                blurOnSubmit={false}
-              />
-
-              <TextInput
-                style={styles.input}
-                placeholder="Hasło"
-                placeholderTextColor="#64748b"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
-
-              <TouchableOpacity style={styles.mainButton} onPress={handleSubmit} disabled={loading}>
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.mainButtonText}>
-                    {isLoginMode ? 'Zaloguj się' : 'Zarejestruj'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.switchButton}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setIsLoginMode((value) => !value);
-                }}
-              >
-                <Text style={styles.switchButtonText}>
-                  {isLoginMode ? 'Nie masz jeszcze konta? Zarejestruj się' : 'Masz już konto? Zaloguj się'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </TouchableWithoutFeedback>
+        {isWeb ? (
+          formContent
+        ) : (
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            {formContent}
+          </TouchableWithoutFeedback>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -213,6 +223,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 14,
     fontSize: 15,
+    userSelect: 'text',
   },
   mainButton: {
     backgroundColor: '#2563eb',

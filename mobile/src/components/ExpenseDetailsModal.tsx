@@ -26,7 +26,7 @@ export default function ExpenseDetailsModal({
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView>
+          <ScrollView keyboardShouldPersistTaps="handled">
             <Text style={styles.detailsExpenseTitle}>{expense.title}</Text>
             <Text style={styles.detailsAmount}>{(expense.amount / 100).toFixed(2)} PLN</Text>
             <Text style={styles.detailsLabel}>Płatnik</Text>

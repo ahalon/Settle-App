@@ -316,6 +316,7 @@ export default function GroupDetailScreen({ token, currentUser, group, onBack }:
           style={styles.tabScroll}
           contentContainerStyle={styles.tabContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
