@@ -98,7 +98,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
   const formContent = (
     <ScrollView
       contentContainerStyle={styles.scrollContent}
-      keyboardShouldPersistTaps="handled"
+      keyboardShouldPersistTaps={isWeb ? 'always' : 'handled'}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.headerBox}>
@@ -119,6 +119,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
               onChangeText={setName}
               autoCapitalize="words"
               blurOnSubmit={false}
+              pointerEvents="auto"
             />
             <TextInput
               style={styles.input}
@@ -129,6 +130,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
               value={phone}
               onChangeText={(val) => setPhone(val.replace(/\D/g, ''))}
               blurOnSubmit={false}
+              pointerEvents="auto"
             />
           </>
         )}
@@ -142,6 +144,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
           value={email}
           onChangeText={setEmail}
           blurOnSubmit={false}
+          pointerEvents="auto"
         />
 
         <TextInput
@@ -151,6 +154,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          pointerEvents="auto"
         />
 
         <TouchableOpacity style={styles.mainButton} onPress={handleSubmit} disabled={loading}>
@@ -178,6 +182,10 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
     </ScrollView>
   );
 
+  if (isWeb) {
+    return <SafeAreaView style={styles.safeArea}>{formContent}</SafeAreaView>;
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -185,13 +193,9 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
-        {isWeb ? (
-          formContent
-        ) : (
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-            {formContent}
-          </TouchableWithoutFeedback>
-        )}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          {formContent}
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
