@@ -37,7 +37,7 @@ function MainApp() {
 
     const setupPushNotifications = async () => {
       try {
-        const pushToken = await registerForPushNotificationsAsync();
+        const pushToken = await registerForPushNotificationsAsync(token);
         if (pushToken) {
           await updatePushToken(token, pushToken);
         }

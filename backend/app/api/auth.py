@@ -29,21 +29,36 @@ class PushTokenPayload(BaseModel):
 
 def send_expo_push(token: str, title: str, body: str, data: dict | None = None) -> None:
     """Wysyła powiadomienie push przez publiczne API Expo."""
-    if not token or not token.startswith("ExponentPushToken"):
+    if not token:
+        print("[Push] Pominięto wysyłkę push - brak tokena.")
+        return
+
+    token_clean = token.strip()
+    if not (token_clean.startswith("ExponentPushToken") or token_clean.startswith("ExpoPushToken")):
+        print(f"[Push] Nieprawidłowy format tokena push (oczekiwano ExponentPushToken lub ExpoPushToken): {token_clean}")
         return
 
     url = "https://exp.host/--/api/v2/push/send"
     payload = {
-        "to": token,
+        "to": token_clean,
         "title": title,
         "body": body,
         "sound": "default",
+        "channelId": "default",
+        "priority": "high",
+        "_displayInForeground": True,
         "data": data or {},
     }
+    headers = {
+        "Accept": "application/json",
+        "Accept-encoding": "gzip, deflate",
+        "Content-Type": "application/json",
+    }
     try:
-        requests.post(url, json=payload, timeout=5)
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        print(f"[Push] Expo response: {response.status_code} - {response.text}")
     except Exception as e:
-        print(f"Błąd wysyłki powiadomienia push: {e}")
+        print(f"[Push] Błąd podczas wysyłania powiadomienia push do Expo: {e}")
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
@@ -196,6 +211,8 @@ def update_push_token(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    current_user.expo_push_token = payload.token.strip()
+    clean_token = payload.token.strip()
+    current_user.expo_push_token = clean_token
     db.commit()
+    print(f"[Push] Zaktualizowano expo_push_token dla usera {current_user.id} ({current_user.name}): {clean_token}")
     return {"status": "ok", "message": "Token powiadomień zaktualizowany."}

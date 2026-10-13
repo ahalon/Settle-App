@@ -75,6 +75,8 @@ def declare_transfer(
             body=f"{current_user.name} zadeklarował spłatę {amount_pln}. Sprawdź konto i potwierdź.",
             data={"group_id": group_id, "transfer_id": transfer.id, "type": "transfer_declared"},
         )
+    else:
+        print(f"[Push] Brak expo_push_token dla odbiorcy {receiver.id} ({receiver.name}) - pomijam push, wysyłam e-mail.")
 
     # 2. Powiadomienie e-mail do odbiorcy przelewu
     background_tasks.add_task(
@@ -147,6 +149,8 @@ def update_transfer_status(
                         body=f"{current_user.name} odrzucił deklarację przelewu na kwotę {amount_pln}. Twój dług został przywrócony.",
                         data={"transfer_id": transfer.id, "type": "transfer_rejected"},
                     )
+            else:
+                print(f"[Push] Brak expo_push_token dla nadawcy {sender.id} ({sender.name}) - pomijam push.")
 
             # E-mail w przypadku odrzucenia deklaracji przelewu
             if new_status == "rejected" and sender.email:

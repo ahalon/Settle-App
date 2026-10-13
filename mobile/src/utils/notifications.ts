@@ -1,5 +1,7 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
+import { getToken } from '../../authStorage';
+import { updatePushToken } from '../services/api';
 
 const isExpoGoAndroid =
   Constants.executionEnvironment === ExecutionEnvironment.StoreClient &&
@@ -26,7 +28,7 @@ if (!isExpoGoAndroid) {
   }
 }
 
-export async function registerForPushNotificationsAsync(): Promise<string | null> {
+export async function registerForPushNotificationsAsync(authToken?: string): Promise<string | null> {
   if (isExpoGoAndroid) {
     console.log('[Push] Wyłączone w Expo Go na Androidzie (wymóg SDK 53+).');
     return null;
@@ -53,15 +55,36 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
-        name: 'Powiadomienia główne',
+        name: 'default',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#2563eb',
+        lightColor: '#FF231F7C',
       });
     }
 
-    const pushTokenData = await Notifications.getExpoPushTokenAsync();
-    return pushTokenData.data;
+    const projectId =
+      Constants?.expoConfig?.extra?.eas?.projectId ??
+      Constants?.easConfig?.projectId ??
+      '3d084c4b-b5de-4a93-8d27-3d69bead1657';
+
+    const pushTokenData = await Notifications.getExpoPushTokenAsync({
+      projectId,
+    });
+    const pushToken: string | null = pushTokenData?.data || null;
+
+    if (pushToken) {
+      const activeToken = authToken || (await getToken());
+      if (activeToken) {
+        try {
+          await updatePushToken(activeToken, pushToken);
+          console.log('[Push] Token zarejestrowany i zapisany w bazie danych:', pushToken);
+        } catch (pushErr) {
+          console.error('[Push] Błąd zapisu expo_push_token w bazie:', pushErr);
+        }
+      }
+    }
+
+    return pushToken;
   } catch (error) {
     console.error('[Push] Błąd pobierania tokena Expo:', error);
     return null;
