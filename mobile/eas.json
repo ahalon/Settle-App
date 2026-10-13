@@ -10,6 +10,9 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://settle-app-lnyt.onrender.com"
+      },
       "android": {
         "buildType": "apk"
       }
