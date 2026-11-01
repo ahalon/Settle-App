@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
 from sqlalchemy import extract
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.auth import get_current_user, send_expo_push
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.base import Expense, Group, Transfer, User
+from app.models.base import Expense, Group, Notification, Transfer, User
 from app.schemas import BalanceOut, MonthlySummaryOut
 from app.services.email_service import (
     send_monthly_creditor_settlement_email,
@@ -15,6 +15,13 @@ from app.services.email_service import (
 )
 
 router = APIRouter()
+
+
+def previous_month(now: datetime | None = None) -> tuple[int, int]:
+    current = now or datetime.now(timezone.utc)
+    if current.month == 1:
+        return current.year - 1, 12
+    return current.year, current.month - 1
 
 
 def simplify_debts(net_balances: dict[int, int], members: list[User]) -> list[dict]:
@@ -191,22 +198,15 @@ def get_group_monthly_summary(
     }
 
 
-@router.post("/settlements/monthly-trigger")
-def trigger_monthly_settlement(
-    background_tasks: BackgroundTasks,
-    x_cron_key: str | None = Header(None, alias="X-Cron-Key"),
-    db: Session = Depends(get_db),
-):
-    """
-    Endpoint wywoływany 1. dnia miesiąca przez crona.
-    Wymaga nagłówka X-Cron-Key zgodnego z CRON_SECRET w ustawieniach.
-    """
-    expected_secret = getattr(settings, "CRON_SECRET", "settleapp-secret-cron-key")
-    if x_cron_key != expected_secret:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Nieautoryzowane wywołanie crona.",
-        )
+def dispatch_monthly_settlements(
+    db: Session,
+    background_tasks: BackgroundTasks | None = None,
+    force: bool = False,
+    year: int | None = None,
+    month: int | None = None,
+) -> dict:
+    if year is None or month is None:
+        year, month = previous_month()
 
     groups = db.query(Group).all()
     notified_users_count = 0
@@ -218,12 +218,12 @@ def trigger_monthly_settlement(
         net_balances = calculate_group_balances(group, db)
         settlements = simplify_debts(net_balances, group.members)
 
-        # Grupujemy długi według dłużnika: debtor_id -> list of settlements
+        # 1. Grupujemy długi według dłużnika: debtor_id -> list of settlements
         debts_by_user: dict[int, list[dict]] = {}
         for s in settlements:
             debts_by_user.setdefault(s["from_user_id"], []).append(s)
 
-        # Grupujemy należności według wierzyciela: creditor_id -> list of settlements
+        # 2. Grupujemy należności według wierzyciela: creditor_id -> list of settlements
         credits_by_user: dict[int, list[dict]] = {}
         for s in settlements:
             credits_by_user.setdefault(s["to_user_id"], []).append(s)
@@ -233,35 +233,94 @@ def trigger_monthly_settlement(
         # 1. Powiadomienia dla dłużników
         for user_id, user_settlements in debts_by_user.items():
             user = member_map.get(user_id)
-            if not user:
+            if not user or not user.email:
                 continue
+
+            # Zapobieganie podwójnemu wysłaniu w tym samym miesiącu
+            if not force:
+                already_sent = (
+                    db.query(Notification)
+                    .filter(
+                        Notification.user_id == user.id,
+                        Notification.group_id == group.id,
+                        Notification.year == year,
+                        Notification.month == month,
+                        Notification.message.like("Miesięczne rozliczenie email:%"),
+                    )
+                    .first()
+                )
+                if already_sent:
+                    continue
 
             notified_users_count += 1
 
             # Push
             if user.expo_push_token:
-                background_tasks.add_task(
-                    send_expo_push,
-                    token=user.expo_push_token,
-                    title=f"Miesięczne rozliczenie: {group.name}",
-                    body="Sprawdź swoje saldo i spłać zobowiązania w grupie.",
-                    data={"group_id": group.id, "type": "monthly_settlement"},
-                )
+                if background_tasks:
+                    background_tasks.add_task(
+                        send_expo_push,
+                        token=user.expo_push_token,
+                        title=f"Miesięczne rozliczenie: {group.name}",
+                        body="Sprawdź swoje saldo i spłać zobowiązania w grupie.",
+                        data={"group_id": group.id, "type": "monthly_settlement"},
+                    )
+                else:
+                    send_expo_push(
+                        token=user.expo_push_token,
+                        title=f"Miesięczne rozliczenie: {group.name}",
+                        body="Sprawdź swoje saldo i spłać zobowiązania w grupie.",
+                        data={"group_id": group.id, "type": "monthly_settlement"},
+                    )
 
             # Email
-            background_tasks.add_task(
-                send_monthly_settlement_email,
-                recipient_email=user.email,
-                recipient_name=user.name,
-                group_name=group.name,
-                settlements=user_settlements,
+            if background_tasks:
+                background_tasks.add_task(
+                    send_monthly_settlement_email,
+                    recipient_email=user.email,
+                    recipient_name=user.name,
+                    group_name=group.name,
+                    settlements=user_settlements,
+                )
+            else:
+                send_monthly_settlement_email(
+                    recipient_email=user.email,
+                    recipient_name=user.name,
+                    group_name=group.name,
+                    settlements=user_settlements,
+                )
+
+            # Zapisz znacznik wysłania maila rozliczeniowego
+            db.add(
+                Notification(
+                    user_id=user.id,
+                    group_id=group.id,
+                    year=year,
+                    month=month,
+                    message=f"Miesięczne rozliczenie email: wysłano {datetime.now(timezone.utc).isoformat()}",
+                )
             )
 
         # 2. Powiadomienia dla wierzycieli (ludzi na plusie)
         for user_id, user_credits in credits_by_user.items():
             user = member_map.get(user_id)
-            if not user:
+            if not user or not user.email:
                 continue
+
+            # Zapobieganie podwójnemu wysłaniu w tym samym miesiącu
+            if not force:
+                already_sent = (
+                    db.query(Notification)
+                    .filter(
+                        Notification.user_id == user.id,
+                        Notification.group_id == group.id,
+                        Notification.year == year,
+                        Notification.month == month,
+                        Notification.message.like("Miesięczne rozliczenie email:%"),
+                    )
+                    .first()
+                )
+                if already_sent:
+                    continue
 
             notified_users_count += 1
             total_cents = sum(c.get("amount_cents", 0) for c in user_credits)
@@ -269,25 +328,81 @@ def trigger_monthly_settlement(
 
             # Push
             if user.expo_push_token:
-                background_tasks.add_task(
-                    send_expo_push,
-                    token=user.expo_push_token,
-                    title=f"Miesięczne rozliczenie: {group.name}",
-                    body=f"Jesteś na plusie! Członkowie grupy wiszą Ci łącznie {total_pln}.",
-                    data={"group_id": group.id, "type": "monthly_settlement"},
-                )
+                if background_tasks:
+                    background_tasks.add_task(
+                        send_expo_push,
+                        token=user.expo_push_token,
+                        title=f"Miesięczne rozliczenie: {group.name}",
+                        body=f"Jesteś na plusie! Członkowie grupy wiszą Ci łącznie {total_pln}.",
+                        data={"group_id": group.id, "type": "monthly_settlement"},
+                    )
+                else:
+                    send_expo_push(
+                        token=user.expo_push_token,
+                        title=f"Miesięczne rozliczenie: {group.name}",
+                        body=f"Jesteś na plusie! Członkowie grupy wiszą Ci łącznie {total_pln}.",
+                        data={"group_id": group.id, "type": "monthly_settlement"},
+                    )
 
             # Email
-            background_tasks.add_task(
-                send_monthly_creditor_settlement_email,
-                recipient_email=user.email,
-                recipient_name=user.name,
-                group_name=group.name,
-                credits=user_credits,
+            if background_tasks:
+                background_tasks.add_task(
+                    send_monthly_creditor_settlement_email,
+                    recipient_email=user.email,
+                    recipient_name=user.name,
+                    group_name=group.name,
+                    credits=user_credits,
+                )
+            else:
+                send_monthly_creditor_settlement_email(
+                    recipient_email=user.email,
+                    recipient_name=user.name,
+                    group_name=group.name,
+                    credits=user_credits,
+                )
+
+            # Zapisz znacznik wysłania maila rozliczeniowego
+            db.add(
+                Notification(
+                    user_id=user.id,
+                    group_id=group.id,
+                    year=year,
+                    month=month,
+                    message=f"Miesięczne rozliczenie email: wysłano {datetime.now(timezone.utc).isoformat()}",
+                )
             )
+
+    db.commit()
 
     return {
         "status": "success",
         "processed_groups": len(groups),
         "notified_users": notified_users_count,
+        "year": year,
+        "month": month,
     }
+
+
+@router.post("/settlements/monthly-trigger")
+def trigger_monthly_settlement(
+    background_tasks: BackgroundTasks,
+    x_cron_key: str | None = Header(None, alias="X-Cron-Key"),
+    force: bool = Query(False, description="Wymuś wysyłkę nawet jeśli już wysłano w tym miesiącu"),
+    db: Session = Depends(get_db),
+):
+    """
+    Endpoint wywoływany 1. dnia miesiąca o 10:00 przez crona.
+    Wymaga nagłówka X-Cron-Key zgodnego z CRON_SECRET w ustawieniach.
+    """
+    expected_secret = getattr(settings, "CRON_SECRET", "settleapp-secret-cron-key")
+    if x_cron_key != expected_secret:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Nieautoryzowane wywołanie crona.",
+        )
+
+    return dispatch_monthly_settlements(
+        db=db,
+        background_tasks=background_tasks,
+        force=force,
+    )

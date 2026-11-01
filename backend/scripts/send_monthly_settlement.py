@@ -22,19 +22,23 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(BACKEND_DIR, ".env"))
 
 from app.core.database import SessionLocal
-from app.models.base import Group, User
+from app.models.base import Group, Notification, User
 from app.api.balance import calculate_group_balances, simplify_debts
 from app.api.auth import send_expo_push
+from app.api.notifications import previous_month
 from app.services.email_service import (
     send_monthly_settlement_email,
     send_monthly_creditor_settlement_email,
 )
+from datetime import datetime, timezone
 
 
-def run(dry_run: bool = True):
-    mode_str = "TRYB TESTOWY (DRY-RUN - bez wysyłki)" if dry_run else "TRYB WYSYŁKI RZECZYWISTEJ"
+def run(dry_run: bool = True, force: bool = False):
+    year, month = previous_month()
+    mode_str = "TRYB TESTOWY (DRY-RUN - bez wysyłki)" if dry_run else ("TRYB WYSYŁKI RZECZYWISTEJ (WYMUSZONY)" if force else "TRYB WYSYŁKI RZECZYWISTEJ")
     print(f"\n=======================================================")
     print(f"  SettleApp - Miesięczne Rozliczenie ({mode_str})")
+    print(f"  Rozliczenie za okres: {month:02d}/{year}")
     print(f"=======================================================\n")
 
     db = SessionLocal()
@@ -94,6 +98,19 @@ def run(dry_run: bool = True):
                     blik_str = f" [BLIK: {s['to_user_phone']}]" if s.get('to_user_phone') else ""
                     print(f"      -> Przelej {s['amount_pln']} do {s['to_user_name']}{blik_str}")
 
+                # Sprawdzenie czy już wysłano
+                if not force:
+                    already_sent = db.query(Notification).filter(
+                        Notification.user_id == user.id,
+                        Notification.group_id == group.id,
+                        Notification.year == year,
+                        Notification.month == month,
+                        Notification.message.like("Miesięczne rozliczenie email:%"),
+                    ).first()
+                    if already_sent:
+                        print(f"      [POMINIĘTO] Mail do {user.name} za {month:02d}/{year} został już wysłany (użyj --force, aby wysłać ponownie).")
+                        continue
+
                 if not dry_run:
                     print(f"      [WYSYŁANIE] E-mail do {user.email}...")
                     send_monthly_settlement_email(
@@ -110,6 +127,14 @@ def run(dry_run: bool = True):
                             body="Sprawdź swoje saldo i spłać zobowiązania w grupie.",
                             data={"group_id": group.id, "type": "monthly_settlement"},
                         )
+                    db.add(Notification(
+                        user_id=user.id,
+                        group_id=group.id,
+                        year=year,
+                        month=month,
+                        message=f"Miesięczne rozliczenie email: wysłano {datetime.now(timezone.utc).isoformat()}",
+                    ))
+                    db.commit()
 
             # 2. Wierzyciele (ludzie na plusie)
             print("\n   --- 🟢 WIERZYCIELE (należności do odebrania) ---")
@@ -125,6 +150,19 @@ def run(dry_run: bool = True):
                 print(f"   👤 {user.name} ({user.email}): łącznie do odebrania {total_credit_pln}")
                 for c in user_credits:
                     print(f"      <- {c['from_user_name']} powinien przelać {c['amount_pln']}")
+
+                # Sprawdzenie czy już wysłano
+                if not force:
+                    already_sent = db.query(Notification).filter(
+                        Notification.user_id == user.id,
+                        Notification.group_id == group.id,
+                        Notification.year == year,
+                        Notification.month == month,
+                        Notification.message.like("Miesięczne rozliczenie email:%"),
+                    ).first()
+                    if already_sent:
+                        print(f"      [POMINIĘTO] Mail do {user.name} za {month:02d}/{year} został już wysłany (użyj --force, aby wysłać ponownie).")
+                        continue
 
                 if not dry_run:
                     print(f"      [WYSYŁANIE] E-mail do {user.email}...")
@@ -142,6 +180,14 @@ def run(dry_run: bool = True):
                             body=f"Jesteś na plusie! Członkowie grupy wiszą Ci łącznie {total_credit_pln}.",
                             data={"group_id": group.id, "type": "monthly_settlement"},
                         )
+                    db.add(Notification(
+                        user_id=user.id,
+                        group_id=group.id,
+                        year=year,
+                        month=month,
+                        message=f"Miesięczne rozliczenie email: wysłano {datetime.now(timezone.utc).isoformat()}",
+                    ))
+                    db.commit()
 
         print("\n-------------------------------------------------------")
         print(f"Podsumowanie: {total_debtors_count} dłużników, {total_creditors_count} wierzycieli.")
@@ -158,9 +204,11 @@ def run(dry_run: bool = True):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Wysyłka miesięcznego rozliczenia SettleApp")
     parser.add_argument("--send", action="store_true", help="Wyślij maile i powiadomienia push")
+    parser.add_argument("--force", action="store_true", help="Wymuś wysyłkę nawet jeśli wysłano już w tym miesiącu")
     parser.add_argument("--dry-run", action="store_true", default=False, help="Tylko podgląd bez wysyłki")
     args = parser.parse_args()
 
     # Domyślnie bezpieczny dry-run, chyba że jawnie podano --send
     is_dry = not args.send
-    run(dry_run=is_dry)
+    run(dry_run=is_dry, force=args.force)
+

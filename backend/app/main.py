@@ -6,6 +6,7 @@ from apscheduler.triggers.cron import CronTrigger
 from app.core.database import engine
 from app.core.database import SessionLocal
 from app.models.base import Base
+from app.api.balance import dispatch_monthly_settlements
 from app.api.notifications import generate_monthly_notifications
 from app.api.router import router as api_router
 
@@ -15,10 +16,13 @@ Base.metadata.create_all(bind=engine)
 scheduler = BackgroundScheduler(timezone="Europe/Warsaw")
 
 
-def run_monthly_notifications() -> None:
+def run_monthly_settlements_and_notifications() -> None:
     db = SessionLocal()
     try:
         generate_monthly_notifications(db)
+        dispatch_monthly_settlements(db)
+    except Exception as e:
+        print(f"[Scheduler Error] Błąd podczas comiesięcznego rozliczenia: {e}")
     finally:
         db.close()
 
@@ -49,8 +53,8 @@ app.include_router(api_router, prefix="/api")
 def start_scheduler() -> None:
     if not scheduler.running:
         scheduler.add_job(
-            run_monthly_notifications,
-            CronTrigger(day=1, hour=9, minute=0, timezone="Europe/Warsaw"),
+            run_monthly_settlements_and_notifications,
+            CronTrigger(day=1, hour=10, minute=0, timezone="Europe/Warsaw"),
             id="monthly-balance-notifications",
             replace_existing=True,
         )

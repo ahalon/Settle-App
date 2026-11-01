@@ -1,0 +1,72 @@
+name: Monthly Settlement Dispatch
+
+on:
+  schedule:
+    # Uruchamia się 1. dnia każdego miesiąca o 08:00 UTC i 09:00 UTC.
+    # Weryfikacja strefy czasowej wewnątrz joba sprawdza, czy w Warszawie (Europe/Warsaw)
+    # wybiła dokładnie godzina 10:00 (uwzględnia automatycznie czas letni UTC+2 i zimowy UTC+1).
+    - cron: '0 8,9 1 * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Wymuś wysłanie maili (nawet jeśli wysłano już w tym miesiącu)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  dispatch-settlements:
+    name: Dispatch Monthly Settlements (10:00 Warsaw time)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify Europe/Warsaw Time (10:00 AM)
+        id: check-time
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual execution triggered via workflow_dispatch. Proceeding immediately."
+            echo "proceed=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          WARSAW_HOUR=$(TZ="Europe/Warsaw" date +%H)
+          echo "Current Europe/Warsaw hour: $WARSAW_HOUR"
+
+          if [ "$WARSAW_HOUR" = "10" ]; then
+            echo "Match confirmed: 10:00 Warsaw time. Proceeding with settlement dispatch."
+            echo "proceed=true" >> $GITHUB_OUTPUT
+          else
+            echo "Skipping: Current Warsaw hour is $WARSAW_HOUR (target is 10:00)."
+            echo "proceed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Monthly Settlement Trigger to Backend
+        if: steps.check-time.outputs.proceed == 'true'
+        run: |
+          FORCE_QUERY=""
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            FORCE_QUERY="?force=true"
+          fi
+
+          echo "Calling SettleApp backend to wake up container and dispatch emails..."
+          RESPONSE=$(curl -s -S -w "\nHTTP_STATUS:%{http_code}" -X POST \
+            "https://settle-app-lnyt.onrender.com/api/settlements/monthly-trigger$FORCE_QUERY" \
+            -H "X-Cron-Key: settleapp-secret-cron-key" \
+            -H "Content-Type: application/json" \
+            --connect-timeout 30 \
+            --max-time 180)
+
+          HTTP_BODY=$(echo "$RESPONSE" | sed -e '$d')
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1 | cut -d':' -f2)
+
+          echo "==========================================="
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response Body: $HTTP_BODY"
+          echo "==========================================="
+
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Error: Backend returned HTTP status $HTTP_STATUS"
+            exit 1
+          fi
+
+          echo "Monthly settlements successfully triggered!"
