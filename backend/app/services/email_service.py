@@ -247,3 +247,47 @@ def send_monthly_settlement_email(
     """
 
     _send_email(recipient_email, f"SettleApp: Miesięczne rozliczenie grupy {group_name}", html_content)
+
+
+def send_monthly_creditor_settlement_email(
+    recipient_email: str,
+    recipient_name: str,
+    group_name: str,
+    credits: list[dict],
+) -> None:
+    total_cents = sum(c.get("amount_cents", 0) for c in credits)
+    total_pln = f"{total_cents / 100:.2f} PLN"
+
+    rows_html = "".join(
+        f"""
+        <li style="margin-bottom: 8px;">
+          <strong>{c['from_user_name']}</strong> powinien przelać Ci <strong>{c['amount_pln']}</strong>
+        </li>
+        """
+        for c in credits
+    )
+
+    html_content = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 20px;">
+        <div style="max-width: 520px; margin: 0 auto; background: #1e293b; padding: 24px; border-radius: 8px; border: 1px solid #10b981;">
+          <h2 style="color: #10b981; margin-top: 0;">Miesięczne rozliczenie: {group_name}</h2>
+          <p style="color: #cbd5e1;">Cześć {recipient_name}, zakończył się miesiąc i podsumowaliśmy salda w grupie.</p>
+          <div style="background-color: #064e3b; border-left: 4px solid #10b981; padding: 12px; margin: 16px 0; border-radius: 4px;">
+            <p style="color: #a7f3d0; margin: 0; font-size: 15px;">
+              Jesteś na plusie! Członkowie grupy powinni zwrócić Ci łącznie: <strong>{total_pln}</strong>
+            </p>
+          </div>
+          <p style="color: #f8fafc; font-weight: bold;">Oczekiwane spłaty:</p>
+          <ul style="color: #cbd5e1; padding-left: 20px;">
+            {rows_html}
+          </ul>
+          <p style="color: #94a3b8; font-size: 13px; margin-top: 24px;">
+            Gdy otrzymasz przelew na konto lub BLIK, nadawca zgłosi deklarację w aplikacji SettleApp – pamiętaj o jej zatwierdzeniu.
+          </p>
+        </div>
+      </body>
+    </html>
+    """
+
+    _send_email(recipient_email, f"SettleApp: Podsumowanie miesiąca grupy {group_name} - należności ({total_pln})", html_content)

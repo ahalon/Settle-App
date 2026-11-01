@@ -9,7 +9,10 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.base import Expense, Group, Transfer, User
 from app.schemas import BalanceOut, MonthlySummaryOut
-from app.services.email_service import send_monthly_settlement_email
+from app.services.email_service import (
+    send_monthly_creditor_settlement_email,
+    send_monthly_settlement_email,
+)
 
 router = APIRouter()
 
@@ -220,8 +223,14 @@ def trigger_monthly_settlement(
         for s in settlements:
             debts_by_user.setdefault(s["from_user_id"], []).append(s)
 
+        # Grupujemy należności według wierzyciela: creditor_id -> list of settlements
+        credits_by_user: dict[int, list[dict]] = {}
+        for s in settlements:
+            credits_by_user.setdefault(s["to_user_id"], []).append(s)
+
         member_map = {m.id: m for m in group.members}
 
+        # 1. Powiadomienia dla dłużników
         for user_id, user_settlements in debts_by_user.items():
             user = member_map.get(user_id)
             if not user:
@@ -229,7 +238,7 @@ def trigger_monthly_settlement(
 
             notified_users_count += 1
 
-            # 1. Push
+            # Push
             if user.expo_push_token:
                 background_tasks.add_task(
                     send_expo_push,
@@ -239,7 +248,7 @@ def trigger_monthly_settlement(
                     data={"group_id": group.id, "type": "monthly_settlement"},
                 )
 
-            # 2. Email
+            # Email
             background_tasks.add_task(
                 send_monthly_settlement_email,
                 recipient_email=user.email,
@@ -248,8 +257,37 @@ def trigger_monthly_settlement(
                 settlements=user_settlements,
             )
 
+        # 2. Powiadomienia dla wierzycieli (ludzi na plusie)
+        for user_id, user_credits in credits_by_user.items():
+            user = member_map.get(user_id)
+            if not user:
+                continue
+
+            notified_users_count += 1
+            total_cents = sum(c.get("amount_cents", 0) for c in user_credits)
+            total_pln = f"{total_cents / 100:.2f} PLN"
+
+            # Push
+            if user.expo_push_token:
+                background_tasks.add_task(
+                    send_expo_push,
+                    token=user.expo_push_token,
+                    title=f"Miesięczne rozliczenie: {group.name}",
+                    body=f"Jesteś na plusie! Członkowie grupy wiszą Ci łącznie {total_pln}.",
+                    data={"group_id": group.id, "type": "monthly_settlement"},
+                )
+
+            # Email
+            background_tasks.add_task(
+                send_monthly_creditor_settlement_email,
+                recipient_email=user.email,
+                recipient_name=user.name,
+                group_name=group.name,
+                credits=user_credits,
+            )
+
     return {
         "status": "success",
         "processed_groups": len(groups),
-        "notified_debtors": notified_users_count,
+        "notified_users": notified_users_count,
     }
